@@ -1,4 +1,4 @@
-import { Component, inject, signal, HostListener } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -18,8 +18,14 @@ import { CartService } from '../../core/services/cart.service';
 
         <!-- Search -->
         <div style="flex:1;max-width:480px;position:relative;">
-          <input type="text" placeholder="Search products..." class="input" style="border-radius:50px;padding:8px 40px 8px 16px;" [(ngModel)]="searchQuery" (keyup.enter)="search()">
-          <button (click)="search()" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:18px;">🔍</button>
+          <input type="text" placeholder="Search products..." class="input"
+            style="border-radius:50px;padding:8px 40px 8px 16px;"
+            [(ngModel)]="searchQuery"
+            (keyup.enter)="search()">
+          <button (click)="search()"
+            style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:18px;">
+            🔍
+          </button>
         </div>
 
         <!-- Nav links -->
@@ -31,7 +37,7 @@ import { CartService } from '../../core/services/cart.service';
           }
 
           @if (auth.isLoggedIn()) {
-            <a routerLink="/account" class="btn btn-secondary btn-sm">👤 {{ auth.user()?.name?.split(' ')[0] }}</a>
+            <a routerLink="/account" class="btn btn-secondary btn-sm">👤 {{ firstName() }}</a>
           } @else {
             <a routerLink="/auth/login" class="btn btn-secondary btn-sm">Login</a>
             <a routerLink="/auth/register" class="btn btn-primary btn-sm">Register</a>
@@ -41,7 +47,9 @@ import { CartService } from '../../core/services/cart.service';
           <a routerLink="/cart" class="btn btn-primary btn-sm" style="position:relative;">
             🛒 Cart
             @if (cart.count() > 0) {
-              <span style="position:absolute;top:-6px;right:-6px;background:#fff;color:var(--primary);width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;border:2px solid var(--primary);">{{ cart.count() }}</span>
+              <span style="position:absolute;top:-6px;right:-6px;background:#fff;color:var(--primary);width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;border:2px solid var(--primary);">
+                {{ cart.count() }}
+              </span>
             }
           </a>
         </nav>
@@ -56,7 +64,16 @@ export class NavbarComponent {
   private router = inject(Router);
   searchQuery = '';
 
-  search() {
-    if (this.searchQuery.trim()) this.router.navigate(['/products'], { queryParams: { search: this.searchQuery } });
+  firstName(): string {
+    const name = this.auth.user()?.name;
+    if (!name) return '';
+    const parts = name.split(' ');
+    return parts[0] ?? name;
+  }
+
+  search(): void {
+    if (this.searchQuery.trim()) {
+      this.router.navigate(['/products'], { queryParams: { search: this.searchQuery } });
+    }
   }
 }

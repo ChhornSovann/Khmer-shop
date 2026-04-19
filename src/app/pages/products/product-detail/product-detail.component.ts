@@ -94,9 +94,9 @@ import { Product, Review } from '../../../core/models';
               <!-- Qty & Stock -->
               <div style="display:flex;align-items:center;gap:16px;margin-bottom:20px;">
                 <div style="display:flex;align-items:center;border:1.5px solid var(--border);border-radius:8px;overflow:hidden;">
-                  <button (click)="qty > 1 && qty--" class="btn btn-secondary" style="border-radius:0;border:none;width:40px;padding:0;">−</button>
+                  <button (click)="decQty()" class="btn btn-secondary" style="border-radius:0;border:none;width:40px;padding:0;">−</button>
                   <span style="padding:0 16px;font-weight:700;min-width:48px;text-align:center;">{{ qty }}</span>
-                  <button (click)="qty < product()!.stock && qty++" class="btn btn-secondary" style="border-radius:0;border:none;width:40px;padding:0;">+</button>
+                  <button (click)="incQty()" class="btn btn-secondary" style="border-radius:0;border:none;width:40px;padding:0;">+</button>
                 </div>
                 @if (product()!.stock > 0) {
                   <span style="font-size:13px;color:#276749;font-weight:600;">✅ {{ product()!.stock }} in stock</span>
@@ -158,7 +158,6 @@ import { Product, Review } from '../../../core/models';
             }
 
             @if (activeTab === 'Reviews') {
-              <!-- Add review -->
               @if (auth.isLoggedIn()) {
                 <div style="background:#fff;border-radius:var(--radius);padding:24px;margin-bottom:24px;box-shadow:var(--shadow);">
                   <h3 style="font-weight:700;margin-bottom:16px;">Write a Review</h3>
@@ -175,7 +174,6 @@ import { Product, Review } from '../../../core/models';
                 </div>
               }
 
-              <!-- Reviews list -->
               @if (reviewsLoading()) {
                 <div style="display:flex;justify-content:center;padding:40px;"><div class="spinner"></div></div>
               } @else {
@@ -254,27 +252,57 @@ export class ProductDetailComponent implements OnInit {
 
   loadReviews(productId: string) {
     this.reviewsLoading.set(true);
-    this.api.getProductReviews(productId).subscribe({ next: r => { this.reviews.set(r.data); this.reviewsLoading.set(false); }, error: () => this.reviewsLoading.set(false) });
+    this.api.getProductReviews(productId).subscribe({
+      next: r => { this.reviews.set(r.data); this.reviewsLoading.set(false); },
+      error: () => this.reviewsLoading.set(false)
+    });
   }
 
-  stars() { const r = Math.round(this.product()?.ratings?.average || 0); return '★'.repeat(r) + '☆'.repeat(5 - r); }
-  discount() { const p = this.product()!; return p.comparePrice ? Math.round((1 - p.price / p.comparePrice) * 100) : 0; }
+  stars(): string {
+    const r = Math.round(this.product()?.ratings?.average || 0);
+    return '★'.repeat(r) + '☆'.repeat(5 - r);
+  }
 
-  addToCart() {
+  discount(): number {
+    const p = this.product();
+    if (!p || !p.comparePrice) return 0;
+    return Math.round((1 - p.price / p.comparePrice) * 100);
+  }
+
+  incQty(): void {
+    const stock = this.product()?.stock ?? 0;
+    if (this.qty < stock) this.qty++;
+  }
+
+  decQty(): void {
+    if (this.qty > 1) this.qty--;
+  }
+
+  addToCart(): void {
     if (!this.auth.isLoggedIn()) { this.toast.warning('Please login'); return; }
-    const variant = Object.keys(this.selectedVariants).length ? { name: Object.keys(this.selectedVariants)[0], value: Object.values(this.selectedVariants)[0] } : undefined;
+    const keys = Object.keys(this.selectedVariants);
+    const variant = keys.length > 0
+      ? { name: keys[0] ?? '', value: this.selectedVariants[keys[0] ?? ''] ?? '' }
+      : undefined;
     this.cartSvc.addAndRefresh(this.product()!._id, this.qty, variant);
   }
 
-  toggleWishlist() {
+  toggleWishlist(): void {
     if (!this.auth.isLoggedIn()) { this.toast.warning('Please login'); return; }
-    this.api.toggleWishlist(this.product()!._id).subscribe(r => { this.isWishlisted = r.added; this.toast.info(r.message); });
+    this.api.toggleWishlist(this.product()!._id).subscribe(r => {
+      this.isWishlisted = r.added;
+      this.toast.info(r.message);
+    });
   }
 
-  submitReview() {
+  submitReview(): void {
     if (!this.newReview.body.trim()) { this.toast.error('Please write a review'); return; }
     this.api.createReview({ product: this.product()!._id, ...this.newReview }).subscribe({
-      next: r => { this.reviews.update(rev => [r.data, ...rev]); this.toast.success('Review submitted!'); this.newReview = { rating: 5, title: '', body: '' }; },
+      next: r => {
+        this.reviews.update(rev => [r.data, ...rev]);
+        this.toast.success('Review submitted!');
+        this.newReview = { rating: 5, title: '', body: '' };
+      },
       error: err => this.toast.error(err.error?.message || 'Failed')
     });
   }
